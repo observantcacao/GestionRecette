@@ -1,123 +1,199 @@
 <?php
 
-
 require_once "database.php";
 
-function getOne(string $type, int $id) : array{
-    $pdo = connexionBdd();
-    $sql = "";
-    switch($type){
-        case 'professeurs':
-            $sql = "SELECT `id`, `nom`, `email`, `telephone` FROM gestionCalendrier.professeur";
-            break;
-        case 'cours':
-            $sql = "SELECT `cours`.`id`, `cours`.`nom`, `cours`.`description`, `professeur`.`nom` as `nomProf`, `horaire`.`heureDebut`, `horaire`.`heureFin`, `salle`.`nom` as `nomSalle`, `horaire`.`jour` FROM gestionCalendrier.cours , gestionCalendrier.professeur , gestionCalendrier.horaire , gestionCalendrier.salle where `cours`.`idHoraire` = `horaire`.`id` AND `cours`.`idProfesseur` = `professeur`.`id` AND `cours`.`idSalle` = `salle`.`id`";
-            break;
-        case 'horaires':
-            $sql = "SELECT `id`,`jour`,`heureDebut`,`heureFin` FROM gestionCalendrier.horaire";
-            break;
-        case 'salles':
-            $sql = "SELECT `id`,`nom` as 'Nom de la salle',`capacite` FROM gestionCalendrier.salle";
-            break;
-        case '':
-            throw new Error("données demander vide? veuillez demander un type");
-        default:
-            throw new Error("données invalide demande un type valide");
+$pdo = connexionBdd();
+$tmp = ["tmp"];
+
+/// gestion de d'informations avec la base de donnée... ///
+
+// CATEGORIES // ------------------------------------------
+function recupCategories() : array {
+    try {
+        // Préparation de la requête d'insertion
+        $query = "SELECT `id`, `nom` FROM gestionRecette.categories;";
+        $requete = $pdo->prepare($query);
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête SQL.");
+        }
+        
+        $resultat = $requete->fetchAll(PDO::FETCH_ASSOC); 
+        return $resultat;
+        
+    } catch (Exception $e) {
+        // En cas d'erreur, on retourne un tableau contenant un message d'erreur détaillé
+        return ["erreur" => "Erreur lors de la récupération des catégories : " . $e->getMessage()];
     }
-    $sql .= " WHERE id = :id";
-    $requete = $pdo->prepare($sql);
-    $requete->bindParam(":id", $id, PDO::PARAM_INT);
-    $requete->execute();
-    if (!$requete) {
-        throw new Error("connexion échoué a la base de données");
-    }
-    $resultat = $requete->fetch(PDO::FETCH_ASSOC);
-    return $resultat;
 }
 
-function getAll(string $type, int $page = 0): array|Error
-{
-    if ($page < 0) {
-        $page = 0;
-    }
-    $limiteParPage = 20; //7;
-    $horsPage = $page * $limiteParPage;
-    $pdo = connexionBdd();
-    $sql = "";
-    switch ($type) {
-        case 'professeurs':
-            $sql = "SELECT `id`, `nom`, `email`, `telephone` FROM gestionCalendrier.professeur";
-            break;
-        case 'cours':
-            $sql = "SELECT `cours`.`id`, `cours`.`nom`, `cours`.`description`, `professeur`.`nom` as `nomProf`, `horaire`.`heureDebut`, `horaire`.`heureFin`, `salle`.`nom` as `nomSalle`, `horaire`.`jour` FROM gestionCalendrier.cours , gestionCalendrier.professeur , gestionCalendrier.horaire , gestionCalendrier.salle where `cours`.`idHoraire` = `horaire`.`id` AND `cours`.`idProfesseur` = `professeur`.`id` AND `cours`.`idSalle` = `salle`.`id`";
-            break;
-        case 'horaires':
-            $sql = "SELECT `id`,`jour`,`heureDebut`,`heureFin` FROM gestionCalendrier.horaire";
-            break;
-        case 'salles':
-            $sql = "SELECT `id`,`nom` as 'Nom de la salle',`capacite` FROM gestionCalendrier.salle";
-            break;
-        case '':
-            throw new Error("données demander vide? veuillez demander un type");
-        default:
-            throw new Error("données invalide demande un type valide");
-    }
-
-    $sql .= " LIMIT :nbIgnorer , :nbAfficher;";
+function oneCategorie(int $id) : array {
     try {
-        $requete = $pdo->prepare($sql);
-        $requete->bindParam(":nbIgnorer", $horsPage, PDO::PARAM_INT);
-        $requete->bindParam(":nbAfficher", $limiteParPage, PDO::PARAM_INT);
-        $requete->execute();
+        // Préparation de la requête d'insertion
+        $query = "SELECT `id`, `nom` FROM gestionRecette.categories WHERE id = :id;";
+        $requete = $pdo->prepare($query);
+
+        // Lier le paramètre
+        $requete->bindParam(':id', $id, PDO::PARAM_INT);
+
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête SQL.");
+        }
+        
+        $resultat = $requete->fetch(PDO::FETCH_ASSOC); 
+        return $resultat;
+        
+    } catch (Exception $e) {
+        // En cas d'erreur, on retourne un tableau contenant un message d'erreur détaillé
+        return ["erreur" => "Erreur lors de la récupération des catégories : " . $e->getMessage()];
+    }
+}
+
+function addCategorie(string $nom) : bool{
+    try {
+        // Préparation de la requête d'insertion
+        $query = "INSERT INTO gestionRecette.categories nom VALUES :nom;";
+        $requete = $pdo->prepare($query);
+        
+        // Lier le paramètre
+        $requete->bindParam(':nom', $nom, PDO::PARAM_STR);
+        
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête d'insertion.");
+        }
+
+        // Retourne true si l'ajout est reussi
+        return true;
+
+    } catch (Exception $e) {
+        // si il y a une erreur on retourne false
+        return false;
+    }
+}
+
+function editCategorie(int $id, string $nom) : bool{
+    try {
+        // Préparation de la requête de mise à jour
+        $query = "UPDATE gestionRecette.categories SET nom = :nom WHERE id = :id;";
+        $requete = $pdo->prepare($query);
+        
+        // Lier les paramètres
+        $requete->bindParam(':nom', $nom, PDO::PARAM_STR);
+        $requete->bindParam(':id', $id, PDO::PARAM_INT);
+        
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête de mise à jour.");
+        }
+
+        // Retourne true si la modification est reussi
+        return true;
+
+    } catch (Exception $e) {
+        // si il y a une erreur on retourne false
+        return false;
+    }
+}
+
+function deleteCategorie(int $id) : bool{
+    try {
+        // Préparation de la requête de mise à jour
+        $query = "UPDATE gestionRecette.categories SET nom = :nom WHERE id = :id;";
+        $requete = $pdo->prepare($query);
+        
+        // Lier les paramètres
+        $requete->bindParam(':nom', $nom, PDO::PARAM_STR);
+        $requete->bindParam(':id', $id, PDO::PARAM_INT);
+        
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête de mise à jour.");
+        }
+
+        // Retourne true si la modification est reussi
+        return true;
+
+    } catch (Exception $e) {
+        // si il y a une erreur on retourne false
+        return false;
+    }
+}
+
+
+// RECETTES // ------------------------------------------
+function recupRecettes() : array {
+    try {
+        // Préparation de la requête d'insertion
+        $query = "SELECT `id`, `titre`, `tempsCuisson`, `cheminPhotos` FROM gestionRecette.recette;";
+        $requete = $pdo->prepare($query);
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête SQL.");
+        }
+        
         $resultat = $requete->fetchAll(PDO::FETCH_ASSOC);
         return $resultat;
-
-    } catch (Exception $err) {
-        throw new Error("Erreur de la requête : " . $err);
+        
+    } catch (Exception $e) {
+        // En cas d'erreur, on retourne un tableau contenant un message d'erreur détaillé
+        return ["erreur" => "Erreur lors de la récupération des catégories : " . $e->getMessage()];
     }
 }
 
-function affichage(array $donnee, bool $afficherID = false): string
-{
-    //table-bordered
-    $retour = '<table class="table table-dark  table-striped table-hover">';
+function oneRecette(int $id) : array {
+    try {
+        // Préparation de la requête d'insertion
+        $query = "SELECT `id`, `titre`, `tempsCuisson`, `cheminPhotos` FROM gestionRecette.recette WHERE id = :id;";
+        $requete = $pdo->prepare($query);
 
-    if (!empty($donnee)) {
+        // Lier le paramètre
+        $requete->bindParam(':id', $id, PDO::PARAM_INT);
 
-        $retour .= '<thead><tr>';
-
-        foreach (array_keys($donnee[0]) as $nomColonne) {
-            if ($nomColonne === 'id' && !$afficherID) {
-                continue;
-            }
-
-            $retour .= '<th class="text-center">' . $nomColonne . '</th>';
-
+        $success = $requete->execute();
+        
+        if (!$success) {
+            throw new Exception("Échec de l'exécution de la requête SQL.");
         }
-        $retour .= '<th class="text-center">Action</th>';
-        $retour .= '</tr></thead><tbody>';
-
-        foreach ($donnee as $ligne) {
-
-            $retour .= '<tr>';
-         
-            foreach ($ligne as $cle => $valeur) {
-
-                if ($cle === 'id' && !$afficherID) {
-                    continue;
-                }
-
-                $retour .= '<td class="text-center">' . $valeur . '</td>';
-            }
-            $retour .= '<td class="text-center"><a href="edit.php?id=' . $ligne['id'] .'"><button type="button" class="btn btn-outline-warning">Modifier</button></a>';
-            $retour .= '<a href="delete.php?id=' . $ligne['id'] .'"><button type="button" class="btn btn-outline-danger">supprimer</button></a></td>';
-            $retour .= '</tr>';
-
-        }
-        $retour .= '</tbody>';
-    } else {
-        $retour .= '<tr><td colspan="100%" class="text-center">Aucune donnée disponible, et si vous en ajoutiez une?</td></tr>';
+        
+        $resultat = $requete->fetch(PDO::FETCH_ASSOC); 
+        return $resultat;
+        
+    } catch (Exception $e) {
+        // En cas d'erreur, on retourne un tableau contenant un message d'erreur détaillé
+        return ["erreur" => "Erreur lors de la récupération des catégories : " . $e->getMessage()];
     }
-    $retour .= '</table>';
-    return $retour;
+}
+
+function addRecette(string $nom) : bool{
+    return true;
+}
+
+function editRecette(int $id, string $nom) : bool{
+    return true;
+}
+
+function deleteRecette(int $id) : bool{
+    return true;
+}
+
+
+// INGREDIENT // ------------------------------------------
+function recupIngredient() : array{
+    return $tmp;
+}
+
+function addIngredient() : bool{
+    return true;
+}
+
+function deleteIngredient() : bool{
+    return true;
 }

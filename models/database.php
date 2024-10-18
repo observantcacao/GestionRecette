@@ -1,6 +1,6 @@
 <?php
 
-require_once 'constantes.php';
+require_once '../config/constantes.php';
 
 /**
  * Retourne une connexion à la base de données
